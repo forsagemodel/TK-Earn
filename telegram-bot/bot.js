@@ -27,7 +27,7 @@ bot.start((ctx) => {
         saveDatabase(db);
     }
 
-    const webUrl = `https://${process.env.RENDER_EXTERNAL_URL}?userId=${userId}`;
+    const webUrl = `${process.env.RENDER_EXTERNAL_URL}?userId=${userId}`;
     ctx.reply(
         'Welcome! Your account is not activated. Click below to proceed:',
         Markup.inlineKeyboard([
