@@ -4,48 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <title>Account Activation</title>
+    <title>Account Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <h1>Account Activation</h1>
+    <h1>Account Dashboard</h1>
     <p id="status">Loading...</p>
+    <div id="dashboard" style="display:none;">
+        <p><strong>Balance:</strong> $<span id="balance">0</span></p>
+        <p id="referral-code" style="display:none;"><strong>Your Referral Code:</strong> <span id="code"></span></p>
+        <h2>Referral History</h2>
+        <ul id="referral-history"></ul>
+    </div>
 
-    <!-- Referral Section -->
-    <div id="referral-section" style="display:none;">
-        <h2>Enter Referral Code</h2>
-        <form id="referral-form">
+    <!-- Activation Section -->
+    <div id="activation-section" style="display:none;">
+        <h2>Activate Your Account</h2>
+        <form id="activation-form">
             <input type="text" id="referralCode" placeholder="Referral Code" required>
-            <button type="submit">Submit</button>
+            <button type="submit">Activate</button>
         </form>
     </div>
 
-    <!-- Payment Section -->
-    <p id="payment-section" style="display:none;">
-        Pay $3 to activate your account: <a href="https://cryptonomus.com/payment-link" target="_blank">Pay Now</a>
-    </p>
-
     <script>
-        // Telegram WebApp SDK
         const tg = window.Telegram.WebApp;
-
-        // Automatically expand the Web App
         tg.expand();
 
-        // Get user ID from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('userId');
 
-        // Load user data from your backend
-        fetch(`/api/user-status?userId=${userId}`)
+        // Fetch user details
+        fetch(`/api/user-details?userId=${userId}`)
             .then((response) => response.json())
             .then((data) => {
                 if (data.active) {
-                    document.getElementById('status').innerText = 'Your account is already active!';
+                    // Show active account details
+                    document.getElementById('status').innerText = 'Your account is active!';
+                    document.getElementById('dashboard').style.display = 'block';
+                    document.getElementById('balance').innerText = data.dummyBalance;
+                    document.getElementById('referral-code').style.display = 'block';
+                    document.getElementById('code').innerText = data.referralCode;
+
+                    // Populate referral history
+                    const referralList = document.getElementById('referral-history');
+                    referralList.innerHTML = '';
+                    data.referralHistory.forEach((ref) => {
+                        const listItem = document.createElement('li');
+                        listItem.innerText = `User: ${ref.referredUser}, Earned: $${ref.amountEarned}`;
+                        referralList.appendChild(listItem);
+                    });
                 } else {
+                    // Show activation form
                     document.getElementById('status').innerText = 'Your account is not activated!';
-                    document.getElementById('referral-section').style.display = 'block';
-                    document.getElementById('payment-section').style.display = 'block';
+                    document.getElementById('activation-section').style.display = 'block';
                 }
             })
             .catch((error) => {
@@ -53,28 +64,27 @@
                 console.error(error);
             });
 
-        // Handle referral code submission
-        document.getElementById('referral-form').addEventListener('submit', (event) => {
+        // Handle activation form submission
+        document.getElementById('activation-form').addEventListener('submit', (event) => {
             event.preventDefault();
             const referralCode = document.getElementById('referralCode').value;
 
-            fetch('/api/submit-referral', {
+            fetch('/api/activate-account', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ userId, referralCode }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, referralCode })
             })
                 .then((response) => response.json())
                 .then((data) => {
                     if (data.success) {
-                        alert('Referral code accepted! Proceed with payment.');
+                        alert('Account activated successfully!');
+                        location.reload(); // Reload to show updated dashboard
                     } else {
                         alert(`Error: ${data.message}`);
                     }
                 })
                 .catch((error) => {
-                    alert('Error submitting referral code.');
+                    alert('Error activating account.');
                     console.error(error);
                 });
         });
