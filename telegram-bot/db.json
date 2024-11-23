@@ -1,3 +1,14 @@
 {
-    "users": {}
+  "users": {
+    "6185508456": {
+      "active": true,
+      "referer": "2023830581",
+      "dummyBalance": 2
+    },
+    "2023830581": {
+      "active": true,
+      "referer": null,
+      "dummyBalance": 4
+    }
+  }
 }
