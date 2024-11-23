@@ -1,0 +1,9 @@
+telegram-bot/
+├── public/                   # Frontend files
+│   ├── index.html            # Main web interface
+│   ├── style.css             # Styles for the web interface
+│   └── script.js             # JavaScript for the frontend
+├── db.json                   # User database
+├── bot.js                    # Backend + Bot logic
+├── package.json              # Node.js dependencies and scripts
+└── .gitignore                # Ignore unnecessary files in Git
