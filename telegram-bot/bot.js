@@ -31,7 +31,7 @@ bot.start((ctx) => {
     ctx.reply(
         'Welcome! Your account is not activated. Click below to proceed:',
         Markup.inlineKeyboard([
-            [Markup.button.url('Open Activation Page', webUrl)]
+            [Markup.button.webApp('Open Activation Page', webUrl)] // WebApp button for inline functionality
         ])
     );
 });
@@ -76,7 +76,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-
-
-
-
