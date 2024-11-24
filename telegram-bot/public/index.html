@@ -9,29 +9,32 @@
 </head>
 <body>
     <h1>Account Activation</h1>
-    <p id="status">Loading...</p>
+    <!-- Status Message -->
+<p id="status"></p>
 
-    <!-- Referral Section -->
-    <div id="referral-section" style="display:none;">
-        <h2>Enter Referral Code</h2>
-        <form id="referral-form">
-            <input type="text" id="referralCode" placeholder="Referral Code" required>
-            <button type="submit">Submit</button>
-        </form>
-    </div>
+<!-- Referral and Activation Sections -->
+<div id="referral-section" style="display:none;">
+    <h2>Enter Referral Code</h2>
+    <form id="referral-form">
+        <input type="text" id="referralCode" placeholder="Referral Code" required>
+        <button type="submit">Submit</button>
+    </form>
+</div>
+
+<div id="payment-section" style="display:none;">
+    <p>Pay $3 to activate your account: <a href="https://cryptonomus.com/payment-link" target="_blank">Pay Now</a></p>
+    <button id="payment-button">Activate Account</button>
+</div>
+
+<!-- User Info Section (Shown When Active) -->
 <div id="user-info" style="display:none;">
     <h2>Your Account Details</h2>
     <p><strong>Referral Code:</strong> <span id="referralCode"></span></p>
-    <p><strong>Balance:</strong> $<span id="dummyBalance"></span></p>
+    <p><strong>Balance:</strong> <span id="dummyBalance"></span></p>
     <h3>Your Referrals</h3>
     <ul id="referralHistory"></ul>
 </div>
 
-    
-    <!-- Payment Section -->
-    <p id="payment-section" style="display:none;">
-        Pay $3 to activate your account: <a href="https://cryptonomus.com/payment-link" target="_blank">Pay Now</a>
-    </p>
 
     <script>
         // Telegram WebApp SDK
