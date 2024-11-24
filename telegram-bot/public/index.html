@@ -10,22 +10,28 @@
 <body>
     <h1>Account Activation</h1>
     <p id="status">Loading...</p>
-    <div id="details" style="display:none;">
+
+    <!-- Account Info Section -->
+    <div id="account-info" style="display:none;">
         <p><strong>Balance:</strong> $<span id="balance">0</span></p>
-        <div id="referral-section" style="display:none;">
-            <p><strong>Your Referral Code:</strong> <span id="referralCode"></span></p>
-            <h2>Earnings History</h2>
-            <ul id="earnings"></ul>
-        </div>
+        <p><strong>Your Referral Code:</strong> <span id="referralCode">N/A</span></p>
+        <h3>Referral History</h3>
+        <ul id="referralHistory"></ul>
     </div>
-    <div id="activation-section" style="display:none;">
+
+    <!-- Referral Section -->
+    <div id="referral-section" style="display:none;">
         <h2>Enter Referral Code</h2>
         <form id="referral-form">
             <input type="text" id="referralCodeInput" placeholder="Referral Code" required>
             <button type="submit">Submit</button>
         </form>
-        <p>Pay $3 to activate your account: <a href="https://cryptonomus.com/payment-link" target="_blank">Pay Now</a></p>
     </div>
+
+    <!-- Payment Section -->
+    <p id="payment-section" style="display:none;">
+        Pay $3 to activate your account: <a href="https://cryptonomus.com/payment-link" target="_blank">Pay Now</a>
+    </p>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -37,25 +43,18 @@
         fetch(`/api/user-status?userId=${userId}`)
             .then((response) => response.json())
             .then((data) => {
-                document.getElementById('status').innerText = data.active 
-                    ? 'Your account is active!'
-                    : 'Your account is not activated!';
-                
                 if (data.active) {
-                    document.getElementById('details').style.display = 'block';
+                    document.getElementById('status').innerText = 'Your account is active!';
+                    document.getElementById('account-info').style.display = 'block';
                     document.getElementById('balance').innerText = data.dummyBalance;
                     document.getElementById('referralCode').innerText = data.referralCode;
-                    document.getElementById('referral-section').style.display = 'block';
-                    if (data.earnings.length > 0) {
-                        const earningsList = document.getElementById('earnings');
-                        data.earnings.forEach((earning) => {
-                            const listItem = document.createElement('li');
-                            listItem.innerText = `From User ${earning.from}: $${earning.amount} at ${new Date(earning.timestamp).toLocaleString()}`;
-                            earningsList.appendChild(listItem);
-                        });
-                    }
+
+                    const referralHistory = data.referrals.map(ref => `<li>${ref}</li>`).join('');
+                    document.getElementById('referralHistory').innerHTML = referralHistory;
                 } else {
-                    document.getElementById('activation-section').style.display = 'block';
+                    document.getElementById('status').innerText = 'Your account is not activated!';
+                    document.getElementById('referral-section').style.display = 'block';
+                    document.getElementById('payment-section').style.display = 'block';
                 }
             })
             .catch((error) => {
@@ -70,13 +69,14 @@
             fetch('/api/submit-referral', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, referralCode })
+                body: JSON.stringify({ userId, referralCode }),
             })
                 .then((response) => response.json())
                 .then((data) => {
-                    alert(data.message);
                     if (data.success) {
-                        location.reload();
+                        alert('Referral code accepted! Proceed with payment.');
+                    } else {
+                        alert(`Error: ${data.message}`);
                     }
                 })
                 .catch((error) => {
