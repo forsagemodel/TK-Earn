@@ -37,7 +37,7 @@ bot.start((ctx) => {
     ctx.reply(
         'Welcome! You can earn money:',
         Markup.inlineKeyboard([
-            [Markup.button.webApp('Start Bot', webUrl)] // WebApp button for inline functionality
+            [Markup.button.webApp('Start Earning', webUrl)] // WebApp button for inline functionality
         ])
     );
 });
