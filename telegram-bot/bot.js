@@ -23,31 +23,22 @@ bot.start((ctx) => {
 
     const db = loadDatabase();
     if (!db.users[userId]) {
-        db.users[userId] = { 
-            active: false, 
-            referer: null, 
-            dummyBalance: 0, 
-            referralCode: userId, // Use userId as the referral code
-            earnings: [] // Track earnings history
-        };
+        db.users[userId] = { active: false, referer: null, dummyBalance: 0, referrals: [] };
         saveDatabase(db);
     }
 
     const webUrl = `${process.env.RENDER_EXTERNAL_URL}?userId=${userId}`;
     ctx.reply(
-        'Welcome! Your account is not activated. Click below to proceed:',
+        'Welcome! You can earn money:',
         Markup.inlineKeyboard([
-            [Markup.button.url('Open Activation Page', webUrl)]
+            [Markup.button.webApp('Start Bot', webUrl)] // WebApp button for inline functionality
         ])
     );
 });
 
-// Notify user of earnings
-const notifyUser = (userId, amount) => {
-    bot.telegram.sendMessage(
-        userId,
-        `🎉 You have earned $${amount} from a referral! Your updated balance is now available in your account.`
-    );
+// Notify the referrer about earnings
+const notifyReferrer = (referrerId, amount) => {
+    bot.telegram.sendMessage(referrerId, `🎉 You earned $${amount} from a referral!`);
 };
 
 // Backend API Endpoints
@@ -63,9 +54,35 @@ app.get('/api/user-status', (req, res) => {
     res.json({
         active: user.active,
         dummyBalance: user.dummyBalance,
-        referralCode: user.referralCode,
-        earnings: user.earnings
+        referrals: user.referrals,
+        referralCode: user.active ? userId : null,
     });
+});
+
+app.post('/api/activate-account', (req, res) => {
+    const { userId } = req.body;
+
+    const db = loadDatabase();
+    const user = db.users[userId];
+
+    if (!user || user.active) {
+        return res.json({ success: false, message: 'Invalid or already active user.' });
+    }
+
+    user.active = true;
+    const referrerId = user.referer;
+
+    if (referrerId) {
+        const referrer = db.users[referrerId];
+        referrer.dummyBalance += 2; // Add $2 to referrer balance
+        referrer.referrals.push(userId); // Add to referral history
+        saveDatabase(db);
+        notifyReferrer(referrerId, 2); // Notify referrer via Telegram
+    } else {
+        saveDatabase(db);
+    }
+
+    res.json({ success: true, message: 'Account activated successfully!' });
 });
 
 app.post('/api/submit-referral', (req, res) => {
@@ -84,19 +101,9 @@ app.post('/api/submit-referral', (req, res) => {
     }
 
     user.referer = referralCode;
-    user.active = true; // Mark the user as active after payment simulation
-    referer.dummyBalance += 2; // Add $2 to the referer's balance
-    referer.earnings.push({
-        from: userId,
-        amount: 2,
-        timestamp: new Date().toISOString()
-    });
     saveDatabase(db);
 
-    // Notify the referrer
-    notifyUser(referralCode, 2);
-
-    res.json({ success: true, message: 'Account activated successfully!' });
+    res.json({ success: true, message: 'Referral code accepted. Proceed with payment!' });
 });
 
 const PORT = process.env.PORT || 3000;
