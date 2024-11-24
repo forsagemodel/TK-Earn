@@ -23,20 +23,35 @@ bot.start((ctx) => {
 
     const db = loadDatabase();
     if (!db.users[userId]) {
-        db.users[userId] = { active: false, referer: null, dummyBalance: 0 };
+        db.users[userId] = { active: false, referer: null, dummyBalance: 0, referralHistory: [] };
         saveDatabase(db);
     }
 
     const webUrl = `${process.env.RENDER_EXTERNAL_URL}?userId=${userId}`;
     ctx.reply(
-        'Welcome! you can earn money:',
+        'Welcome! Your account is not activated. Click below to proceed:',
         Markup.inlineKeyboard([
-            [Markup.button.webApp('Start Bot', webUrl)] // WebApp button for inline functionality
+            [Markup.button.url('Open Activation Page', webUrl)]
         ])
     );
 });
 
-bot.launch();
+// Notify the referrer about earnings
+const notifyReferrer = (referrerId, userId) => {
+    const db = loadDatabase();
+    const referer = db.users[referrerId];
+
+    if (referer) {
+        referer.dummyBalance += 2;
+        referer.referralHistory.push({ earnedFrom: userId, amount: 2 });
+        saveDatabase(db);
+
+        bot.telegram.sendMessage(
+            referrerId,
+            `🎉 You earned $2 from a referral! Total Balance: $${referer.dummyBalance}.`
+        );
+    }
+};
 
 // Backend API Endpoints
 app.get('/api/user-status', (req, res) => {
@@ -48,7 +63,12 @@ app.get('/api/user-status', (req, res) => {
         return res.status(404).json({ message: 'User not found.' });
     }
 
-    res.json({ active: user.active, dummyBalance: user.dummyBalance });
+    res.json({
+        active: user.active,
+        dummyBalance: user.dummyBalance,
+        referralCode: user.active ? userId : null,
+        referralHistory: user.referralHistory,
+    });
 });
 
 app.post('/api/submit-referral', (req, res) => {
@@ -67,9 +87,13 @@ app.post('/api/submit-referral', (req, res) => {
     }
 
     user.referer = referralCode;
+    user.active = true;
     saveDatabase(db);
 
-    res.json({ success: true, message: 'Referral code accepted. Proceed with payment!' });
+    // Notify the referrer and update their balance
+    notifyReferrer(referralCode, userId);
+
+    res.json({ success: true, message: 'Account activated successfully!' });
 });
 
 const PORT = process.env.PORT || 3000;
