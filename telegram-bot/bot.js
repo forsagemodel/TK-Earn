@@ -5,6 +5,7 @@ const fs = require('fs');
 const { Telegraf, Markup } = require('telegraf');
 
 const BOT_TOKEN = process.env.BOT_TOKEN; // Bot Token from BotFather
+const CALLBACK_URL = process.env.CALLBACK_URL; // Callback URL for Cryptonomus
 const bot = new Telegraf(BOT_TOKEN);
 
 const app = express();
@@ -57,6 +58,61 @@ app.get('/api/user-status', (req, res) => {
         referrals: user.referrals,
         referralCode: user.active ? userId : null,
     });
+});
+
+app.post('/api/create-payment', (req, res) => {
+    const { userId, referralCode } = req.body;
+
+    const db = loadDatabase();
+    const user = db.users[userId];
+    const referer = db.users[referralCode];
+
+    if (!user || user.active) {
+        return res.json({ success: false, message: 'Invalid or already active user.' });
+    }
+
+    if (!referer || !referer.active) {
+        return res.json({ success: false, message: 'Invalid referral code.' });
+    }
+
+    // Generate a Cryptonomus payment link
+    const cryptonomusPaymentUrl = `https://cryptonomus.com/pay?amount=3&currency=USDT&callback_url=${CALLBACK_URL}&custom_field=userId=${userId},referralCode=${referralCode}`;
+
+    res.json({ success: true, paymentUrl: cryptonomusPaymentUrl });
+});
+
+// Cryptonomus Payment Callback
+app.post('/payment-callback', (req, res) => {
+    const { amount, custom_field } = req.body;
+
+    // Parse custom fields
+    const params = Object.fromEntries(
+        custom_field.split(',').map((pair) => pair.split('=').map(decodeURIComponent))
+    );
+    const { userId, referralCode } = params;
+
+    const db = loadDatabase();
+    const user = db.users[userId];
+    const referer = db.users[referralCode];
+
+    if (amount !== '3' || !user || user.active || !referer || !referer.active) {
+        return res.status(400).json({ message: 'Invalid payment or user data.' });
+    }
+
+    // Activate the user's account
+    user.active = true;
+    user.referer = referralCode;
+
+    // Add referral bonus to the referrer
+    referer.dummyBalance += 2;
+    referer.referrals.push(userId);
+
+    saveDatabase(db);
+
+    // Notify the referrer
+    notifyReferrer(referralCode, 2);
+
+    res.json({ success: true });
 });
 
 app.post('/api/activate-account', (req, res) => {
