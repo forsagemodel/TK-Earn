@@ -33,6 +33,41 @@
         Pay $3 to activate your account: <a href="https://cryptonomus.com/payment-link" target="_blank">Pay Now</a>
     </p>
 
+
+
+    <p id="payment-section" style="display:none;">
+    <button id="pay-button">Pay $3</button>
+</p>
+
+<script>
+    document.getElementById('pay-button').addEventListener('click', () => {
+        const referralCode = document.getElementById('referralCodeInput').value;
+
+        fetch('/api/create-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, referralCode }),
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    window.location.href = data.paymentUrl; // Redirect to payment URL
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            })
+            .catch((error) => {
+                alert('Error creating payment.');
+                console.error(error);
+            });
+    });
+</script>
+
+
+
+
+
+    
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
