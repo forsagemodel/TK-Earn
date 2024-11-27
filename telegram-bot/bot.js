@@ -73,7 +73,7 @@ app.post('/api/create-payment', async (req, res) => {
             {
                 price_amount: 10, // Amount in USD
                 price_currency: 'USD',
-                pay_currency: 'BNB', // Cryptocurrency for payment
+                pay_currency: 'DOGE', // Cryptocurrency for payment
                 order_id: `${userId}_${referralCode}`, // Order ID for tracking
                 ipn_callback_url: `${RENDER_EXTERNAL_URL}/api/payment-callback`, // Callback URL
                 success_url: `${RENDER_EXTERNAL_URL}/success`, // Success redirect
