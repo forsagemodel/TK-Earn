@@ -3,9 +3,11 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const { Telegraf, Markup } = require('telegraf');
+const axios = require('axios'); // Add axios for API calls
 
 const BOT_TOKEN = process.env.BOT_TOKEN; // Bot Token from BotFather
-const CALLBACK_URL = process.env.CALLBACK_URL; // Callback URL for Cryptonomus
+const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY; // API Key from NOWPayments
+const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL; // Your app's external URL
 const bot = new Telegraf(BOT_TOKEN);
 
 const app = express();
@@ -28,7 +30,7 @@ bot.start((ctx) => {
         saveDatabase(db);
     }
 
-    const webUrl = `${process.env.RENDER_EXTERNAL_URL}?userId=${userId}`;
+    const webUrl = `${RENDER_EXTERNAL_URL}?userId=${userId}`;
     ctx.reply(
         'Welcome! You can earn money:',
         Markup.inlineKeyboard([
@@ -42,25 +44,8 @@ const notifyReferrer = (referrerId, amount) => {
     bot.telegram.sendMessage(referrerId, `🎉 You earned $${amount} from a referral!`);
 };
 
-// Backend API Endpoints
-app.get('/api/user-status', (req, res) => {
-    const userId = req.query.userId;
-    const db = loadDatabase();
-    const user = db.users[userId];
-
-    if (!user) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
-
-    res.json({
-        active: user.active,
-        dummyBalance: user.dummyBalance,
-        referrals: user.referrals,
-        referralCode: user.active ? userId : null,
-    });
-});
-
-app.post('/api/create-payment', (req, res) => {
+// NOWPayments API Endpoints
+app.post('/api/create-payment', async (req, res) => {
     const { userId, referralCode } = req.body;
 
     const db = loadDatabase();
@@ -75,27 +60,43 @@ app.post('/api/create-payment', (req, res) => {
         return res.json({ success: false, message: 'Invalid referral code.' });
     }
 
-    // Generate a Cryptonomus payment link
-    const cryptonomusPaymentUrl = `https://cryptonomus.com/pay?amount=3&currency=USDT&callback_url=${CALLBACK_URL}&custom_field=userId=${userId},referralCode=${referralCode}`;
+    try {
+        // Create payment via NOWPayments API
+        const response = await axios.post(
+            'https://api.nowpayments.io/v1/invoice',
+            {
+                price_amount: 3, // Amount in USD
+                price_currency: 'USD',
+                pay_currency: 'BTC', // Preferred cryptocurrency
+                order_id: `${userId}_${referralCode}`, // Track user and referral
+                ipn_callback_url: `${RENDER_EXTERNAL_URL}/api/payment-callback`, // Webhook URL
+                success_url: `${RENDER_EXTERNAL_URL}/success`, // Redirect after success
+                cancel_url: `${RENDER_EXTERNAL_URL}/cancel`, // Redirect after cancel
+            },
+            { headers: { 'x-api-key': NOWPAYMENTS_API_KEY } }
+        );
 
-    res.json({ success: true, paymentUrl: cryptonomusPaymentUrl });
+        res.json({ success: true, paymentUrl: response.data.invoice_url });
+    } catch (error) {
+        console.error('Error creating payment:', error.response?.data || error.message);
+        res.status(500).json({ success: false, message: 'Failed to create payment.' });
+    }
 });
 
-// Cryptonomus Payment Callback
-app.post('/payment-callback', (req, res) => {
-    const { amount, custom_field } = req.body;
+// Webhook for Payment Callback
+app.post('/api/payment-callback', (req, res) => {
+    const { payment_status, price_amount, order_id } = req.body;
 
-    // Parse custom fields
-    const params = Object.fromEntries(
-        custom_field.split(',').map((pair) => pair.split('=').map(decodeURIComponent))
-    );
-    const { userId, referralCode } = params;
+    if (payment_status !== 'finished' || price_amount < 3) {
+        return res.status(400).json({ message: 'Invalid or incomplete payment.' });
+    }
 
+    const [userId, referralCode] = order_id.split('_');
     const db = loadDatabase();
     const user = db.users[userId];
     const referer = db.users[referralCode];
 
-    if (amount !== '3' || !user || user.active || !referer || !referer.active) {
+    if (!user || user.active || !referer || !referer.active) {
         return res.status(400).json({ message: 'Invalid payment or user data.' });
     }
 
@@ -115,32 +116,25 @@ app.post('/payment-callback', (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/api/activate-account', (req, res) => {
-    const { userId } = req.body;
-
+// User Status API
+app.get('/api/user-status', (req, res) => {
+    const userId = req.query.userId;
     const db = loadDatabase();
     const user = db.users[userId];
 
-    if (!user || user.active) {
-        return res.json({ success: false, message: 'Invalid or already active user.' });
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
     }
 
-    user.active = true;
-    const referrerId = user.referer;
-
-    if (referrerId) {
-        const referrer = db.users[referrerId];
-        referrer.dummyBalance += 2; // Add $2 to referrer balance
-        referrer.referrals.push(userId); // Add to referral history
-        saveDatabase(db);
-        notifyReferrer(referrerId, 2); // Notify referrer via Telegram
-    } else {
-        saveDatabase(db);
-    }
-
-    res.json({ success: true, message: 'Account activated successfully!' });
+    res.json({
+        active: user.active,
+        dummyBalance: user.dummyBalance,
+        referrals: user.referrals,
+        referralCode: user.active ? userId : null,
+    });
 });
 
+// Referral Submission
 app.post('/api/submit-referral', (req, res) => {
     const { userId, referralCode } = req.body;
 
