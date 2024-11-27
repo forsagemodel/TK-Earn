@@ -71,7 +71,7 @@ app.post('/api/create-payment', async (req, res) => {
         const response = await axios.post(
             'https://api.nowpayments.io/v1/invoice',
             {
-                price_amount: 100, // Amount in USD
+                price_amount: 10, // Amount in USD
                 price_currency: 'USD',
                 pay_currency: 'BTC', // Cryptocurrency for payment
                 order_id: `${userId}_${referralCode}`, // Order ID for tracking
