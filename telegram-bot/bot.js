@@ -71,9 +71,9 @@ app.post('/api/create-payment', async (req, res) => {
         const response = await axios.post(
             'https://api.nowpayments.io/v1/invoice',
             {
-                price_amount: 3, // Amount in USD
+                price_amount: 5, // Amount in USD
                 price_currency: 'USD',
-                pay_currency: 'bnb', // Cryptocurrency for payment
+                pay_currency: 'BTC', // Cryptocurrency for payment
                 order_id: `${userId}_${referralCode}`, // Order ID for tracking
                 ipn_callback_url: `${RENDER_EXTERNAL_URL}/api/payment-callback`, // Callback URL
                 success_url: `${RENDER_EXTERNAL_URL}/success`, // Success redirect
