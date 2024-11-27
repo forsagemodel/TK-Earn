@@ -69,7 +69,7 @@ app.post('/api/create-payment', async (req, res) => {
     try {
         // Create payment using NOWPayments API
         const response = await axios.post(
-            'https://api.nowpayments.io/v1/invoice',
+            'https://api.nowpayments.io/v1/full-currencies',
             {
                 price_amount: 10, // Amount in USD
                 price_currency: 'USD',
